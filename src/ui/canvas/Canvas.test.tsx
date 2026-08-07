@@ -1,7 +1,21 @@
-import { render } from "@testing-library/react";
+import { useState } from "react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { addContinueNode, createTag, toggleNodeTag, createDocument } from "../../model/document";
+import {
+  addContinueNode,
+  createTag,
+  toggleNodeTag,
+  createDocument,
+  updateNode,
+  type TreeDocument,
+} from "../../model/document";
 import { Canvas } from "./Canvas";
+
+/** Mimics App's controlled selectedNodeId, needed for tests that rely on selection round-tripping back in. */
+function CanvasHarness({ document }: { document: TreeDocument }) {
+  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  return <Canvas document={document} selectedNodeId={selectedNodeId} onSelectNode={setSelectedNodeId} />;
+}
 
 describe("Canvas", () => {
   it("calls onSelectNode with a node's id when it is clicked", () => {
@@ -68,5 +82,112 @@ describe("Canvas", () => {
     const dots = container.querySelectorAll(".tag-dot");
     expect(dots).toHaveLength(1);
     expect((dots[0] as HTMLElement).style.backgroundColor).toBe("rgb(224, 122, 95)");
+  });
+
+  // React Flow leaves un-measured nodes `visibility: hidden` in jsdom (no
+  // real ResizeObserver), which makes testing-library's accessibility-aware
+  // `getByRole` treat anything inside a node card as hidden. Reach in via a
+  // plain DOM query instead, same as the existing `.quest-node`/`.tag-dot`
+  // assertions above.
+  function collapseToggle(container: HTMLElement): HTMLElement {
+    const button = container.querySelector<HTMLElement>(".quest-node-collapse-toggle");
+    expect(button).not.toBeNull();
+    return button!;
+  }
+
+  it("does not show a collapse toggle on a leaf node", () => {
+    const document = createDocument();
+    const { container } = render(
+      <Canvas document={document} selectedNodeId={null} onSelectNode={vi.fn()} />,
+    );
+
+    expect(container.querySelector(".quest-node-collapse-toggle")).toBeNull();
+  });
+
+  it("collapsing a node hides its descendants, and expanding it shows them again", () => {
+    const document = createDocument();
+    const { document: withChild } = addContinueNode(document, document.rootId);
+    const { container } = render(
+      <Canvas document={withChild} selectedNodeId={null} onSelectNode={vi.fn()} />,
+    );
+
+    expect(screen.getByText("New Node")).toBeInTheDocument();
+
+    fireEvent.click(collapseToggle(container));
+    expect(screen.queryByText("New Node")).not.toBeInTheDocument();
+    expect(collapseToggle(container)).toHaveAttribute("aria-label", "Expand subtree");
+
+    fireEvent.click(collapseToggle(container));
+    expect(screen.getByText("New Node")).toBeInTheDocument();
+  });
+
+  it("clicking a collapse toggle does not also select the node", () => {
+    const document = createDocument();
+    const { document: withChild } = addContinueNode(document, document.rootId);
+    const onSelectNode = vi.fn();
+    const { container } = render(
+      <Canvas document={withChild} selectedNodeId={null} onSelectNode={onSelectNode} />,
+    );
+
+    fireEvent.click(collapseToggle(container));
+
+    expect(onSelectNode).not.toHaveBeenCalled();
+  });
+
+  it("toggles the minimap on and off", () => {
+    const document = createDocument();
+    const { container } = render(
+      <Canvas document={document} selectedNodeId={null} onSelectNode={vi.fn()} />,
+    );
+
+    expect(container.querySelector(".react-flow__minimap")).not.toBeNull();
+
+    fireEvent.click(screen.getByText("Hide minimap"));
+    expect(container.querySelector(".react-flow__minimap")).toBeNull();
+
+    fireEvent.click(screen.getByText("Show minimap"));
+    expect(container.querySelector(".react-flow__minimap")).not.toBeNull();
+  });
+
+  it("search lists name matches and selecting one selects the node", () => {
+    const document = createDocument();
+    const { document: withChild, nodeId } = addContinueNode(document, document.rootId);
+    const named = updateNode(withChild, nodeId, { name: "Findable Child" });
+    const onSelectNode = vi.fn();
+    render(<Canvas document={named} selectedNodeId={null} onSelectNode={onSelectNode} />);
+
+    fireEvent.change(screen.getByLabelText("Search nodes"), { target: { value: "findable" } });
+    const result = screen.getByRole("button", { name: "Findable Child" });
+    fireEvent.click(result);
+
+    expect(onSelectNode).toHaveBeenCalledWith(nodeId);
+  });
+
+  it("search reveals a node hidden under a collapsed ancestor", () => {
+    const document = createDocument();
+    const { document: withChild, nodeId } = addContinueNode(document, document.rootId);
+    const named = updateNode(withChild, nodeId, { name: "Findable Child" });
+    const { container } = render(<CanvasHarness document={named} />);
+
+    fireEvent.click(collapseToggle(container));
+    expect(screen.queryByText("Findable Child")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Search nodes"), { target: { value: "findable" } });
+    fireEvent.click(screen.getByRole("button", { name: "Findable Child" }));
+
+    expect(screen.getByText("Findable Child")).toBeInTheDocument();
+  });
+
+  it("clears the search query after jumping to a result", () => {
+    const document = createDocument();
+    const { document: withChild, nodeId } = addContinueNode(document, document.rootId);
+    const named = updateNode(withChild, nodeId, { name: "Findable Child" });
+    render(<CanvasHarness document={named} />);
+
+    const searchInput = screen.getByLabelText("Search nodes") as HTMLInputElement;
+    fireEvent.change(searchInput, { target: { value: "findable" } });
+    fireEvent.click(screen.getByRole("button", { name: "Findable Child" }));
+
+    expect(searchInput.value).toBe("");
   });
 });

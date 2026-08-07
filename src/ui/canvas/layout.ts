@@ -24,14 +24,19 @@ function orderedChildren(node: QuestNode): ChildRef[] {
  * Lays a tree out top-down: a node's "continue" child always keeps the exact
  * same x as its parent (so a whole quest's linear chain stays in one vertical
  * column), while "branch" children reserve their own subtree width and fan
- * out to the side without overlapping their siblings.
+ * out to the side without overlapping their siblings. A collapsed node is
+ * laid out as if it had no children - its subtree gets no positions at all,
+ * so callers (buildGraph) naturally omit it from the rendered graph.
  */
-export function layoutTree(document: TreeDocument): Record<string, Position> {
+export function layoutTree(
+  document: TreeDocument,
+  collapsedIds: ReadonlySet<string> = new Set(),
+): Record<string, Position> {
   const positions: Record<string, Position> = {};
 
   function place(nodeId: string, leftBound: number, depth: number): SubtreeLayout {
     const node = document.nodes[nodeId];
-    const children = orderedChildren(node);
+    const children = collapsedIds.has(nodeId) ? [] : orderedChildren(node);
 
     if (children.length === 0) {
       const centerX = leftBound + 0.5;

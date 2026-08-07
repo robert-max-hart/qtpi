@@ -82,4 +82,36 @@ describe("layoutTree", () => {
     expect(positions[branch.nodeId].x).toBe(positions[branchStep1.nodeId].x);
     expect(positions[branchStep1.nodeId].x).toBe(positions[branchStep2.nodeId].x);
   });
+
+  it("positions a collapsed node itself but not its descendants", () => {
+    const document = createDocument();
+    const step1 = addContinueNode(document, document.rootId);
+    const step2 = addContinueNode(step1.document, step1.nodeId);
+
+    const positions = layoutTree(step2.document, new Set([document.rootId]));
+
+    expect(Object.keys(positions)).toEqual([document.rootId]);
+  });
+
+  it("treats a collapsed node as a leaf for its siblings' layout", () => {
+    const document = createDocument();
+    const continued = addContinueNode(document, document.rootId);
+    // Give `continued` two children of its own (a continue and a branch) so
+    // its expanded subtree spans two columns - otherwise collapsing it
+    // wouldn't actually change the width it reserves (a single leaf child
+    // already only reserves one column).
+    const continuedNext = addContinueNode(continued.document, continued.nodeId);
+    const branchUnderContinued = addBranchNode(continuedNext.document, continued.nodeId);
+    const branched = addBranchNode(branchUnderContinued.document, document.rootId);
+
+    const collapsedPositions = layoutTree(branched.document, new Set([continued.nodeId]));
+    const expandedPositions = layoutTree(branched.document);
+
+    // Collapsing `continued` shrinks its reserved width from two columns to
+    // one, which shifts its sibling branch's x closer in.
+    expect(collapsedPositions[branched.nodeId].x).not.toBe(expandedPositions[branched.nodeId].x);
+    expect(collapsedPositions[continued.nodeId]).toBeDefined();
+    expect(collapsedPositions[continuedNext.nodeId]).toBeUndefined();
+    expect(collapsedPositions[branchUnderContinued.nodeId]).toBeUndefined();
+  });
 });
