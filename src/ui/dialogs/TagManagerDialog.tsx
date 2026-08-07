@@ -1,6 +1,8 @@
-import { createTag, deleteTag, updateTag, type TreeDocument } from "../../model/document";
+import { useState } from "react";
+import { createTag, deleteTag, DocumentError, updateTag, type TreeDocument } from "../../model/document";
 
 const DEFAULT_TAG_COLOR = "#888888";
+const DEFAULT_TAG_NAME = "New Tag";
 
 interface TagManagerDialogProps {
   document: TreeDocument;
@@ -8,12 +10,37 @@ interface TagManagerDialogProps {
   onClose: () => void;
 }
 
+/** "New Tag", then "New Tag 2", "New Tag 3", ... so repeated clicks on "Add tag" never collide. */
+function nextDefaultTagName(document: TreeDocument): string {
+  const taken = new Set(Object.values(document.tags).map((tag) => tag.name.trim().toLowerCase()));
+  if (!taken.has(DEFAULT_TAG_NAME.toLowerCase())) return DEFAULT_TAG_NAME;
+
+  let n = 2;
+  while (taken.has(`${DEFAULT_TAG_NAME} ${n}`.toLowerCase())) n++;
+  return `${DEFAULT_TAG_NAME} ${n}`;
+}
+
 export function TagManagerDialog({ document, onChangeDocument, onClose }: TagManagerDialogProps) {
+  const [error, setError] = useState<string | null>(null);
   const tags = Object.values(document.tags);
 
   function handleAdd() {
-    const { document: next } = createTag(document, "New Tag", DEFAULT_TAG_COLOR);
-    onChangeDocument(next);
+    try {
+      const { document: next } = createTag(document, nextDefaultTagName(document), DEFAULT_TAG_COLOR);
+      onChangeDocument(next);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof DocumentError ? err.message : "Something went wrong.");
+    }
+  }
+
+  function handleRename(tagId: string, name: string) {
+    try {
+      onChangeDocument(updateTag(document, tagId, { name }));
+      setError(null);
+    } catch (err) {
+      setError(err instanceof DocumentError ? err.message : "Something went wrong.");
+    }
   }
 
   return (
@@ -39,9 +66,7 @@ export function TagManagerDialog({ document, onChangeDocument, onClose }: TagMan
                   type="text"
                   aria-label={`${tag.name} name`}
                   value={tag.name}
-                  onChange={(event) =>
-                    onChangeDocument(updateTag(document, tag.id, { name: event.target.value }))
-                  }
+                  onChange={(event) => handleRename(tag.id, event.target.value)}
                 />
                 <button type="button" onClick={() => onChangeDocument(deleteTag(document, tag.id))}>
                   Delete
@@ -49,6 +74,12 @@ export function TagManagerDialog({ document, onChangeDocument, onClose }: TagMan
               </li>
             ))}
           </ul>
+        )}
+
+        {error && (
+          <p className="inspector-error" role="alert">
+            {error}
+          </p>
         )}
 
         <div className="dialog-actions">

@@ -238,6 +238,32 @@ describe("tags", () => {
     expect(() => updateTag(document, "does-not-exist", { name: "x" })).toThrow(DocumentError);
   });
 
+  it("rejects creating a tag whose name (trimmed, case-insensitive) is already taken", () => {
+    const document = createDocument();
+    const { document: withTag } = createTag(document, "Foreshadowing", "#e07a5f");
+
+    expect(() => createTag(withTag, "  foreshadowing  ", "#000000")).toThrow(
+      'A tag named "  foreshadowing  " already exists.',
+    );
+  });
+
+  it("rejects renaming a tag to a name another tag already has", () => {
+    const document = createDocument();
+    const { document: withFirst } = createTag(document, "Foreshadowing", "#e07a5f");
+    const { document: withBoth, tagId: secondId } = createTag(withFirst, "Red herring", "#4a90d9");
+
+    expect(() => updateTag(withBoth, secondId, { name: "foreshadowing" })).toThrow(DocumentError);
+  });
+
+  it("allows renaming a tag to its own current name (case/whitespace aside)", () => {
+    const document = createDocument();
+    const { document: withTag, tagId } = createTag(document, "Foreshadowing", "#e07a5f");
+
+    const result = updateTag(withTag, tagId, { name: "Foreshadowing" });
+
+    expect(result.tags[tagId].name).toBe("Foreshadowing");
+  });
+
   it("toggles a tag onto a node, then off again", () => {
     const document = createDocument();
     const { document: withTag, tagId } = createTag(document, "Foreshadowing", "#e07a5f");

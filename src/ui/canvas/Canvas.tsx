@@ -93,6 +93,12 @@ export function Canvas({ document, selectedNodeId, onSelectNode }: CanvasProps) 
   return (
     <div className="canvas">
       <ReactFlow
+        // `document.rootId` only changes on New/Load (a wholly different
+        // tree) - never on ordinary edits. Keying on it forces a remount
+        // exactly then, which re-triggers `fitView` (it's otherwise an
+        // initial-mount-only behavior) so the viewport recenters on the new
+        // tree instead of keeping whatever pan/zoom was left over.
+        key={document.rootId}
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}

@@ -26,6 +26,42 @@ describe("TagManagerDialog", () => {
     expect(tags[0].name).toBe("New Tag");
   });
 
+  it("gives a second added tag a distinct default name instead of colliding", () => {
+    const document = createDocument();
+    const { document: withOne } = createTag(document, "New Tag", "#888888");
+    const onChangeDocument = vi.fn();
+    render(
+      <TagManagerDialog document={withOne} onChangeDocument={onChangeDocument} onClose={vi.fn()} />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Add tag" }));
+
+    const updated = onChangeDocument.mock.calls[0][0];
+    const names = (Object.values(updated.tags) as { name: string }[]).map((t) => t.name).sort();
+    expect(names).toEqual(["New Tag", "New Tag 2"]);
+  });
+
+  it("shows an error instead of applying a rename that collides with another tag", () => {
+    const document = createDocument();
+    const { document: withFirst, tagId: firstId } = createTag(document, "Foreshadowing", "#e07a5f");
+    const { document: withBoth, tagId: secondId } = createTag(withFirst, "Red herring", "#4a90d9");
+    const onChangeDocument = vi.fn();
+
+    render(
+      <TagManagerDialog document={withBoth} onChangeDocument={onChangeDocument} onClose={vi.fn()} />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Red herring name"), {
+      target: { value: "Foreshadowing" },
+    });
+
+    expect(onChangeDocument).not.toHaveBeenCalled();
+    expect(screen.getByRole("alert")).toHaveTextContent('A tag named "Foreshadowing" already exists.');
+    // Sanity: the other tag really is still there under its original name, untouched.
+    expect(withBoth.tags[firstId].name).toBe("Foreshadowing");
+    expect(withBoth.tags[secondId].name).toBe("Red herring");
+  });
+
   it("renames a tag", () => {
     const document = createDocument();
     const { document: withTag, tagId } = createTag(document, "Foreshadowing", "#e07a5f");

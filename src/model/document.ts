@@ -68,7 +68,6 @@ export function createDocument(): TreeDocument {
     parent: null,
     children: [],
     tags: [],
-    metadata: {},
   };
 
   return {
@@ -101,7 +100,6 @@ export function addContinueNode(
     parent: parentId,
     children: [],
     tags: [],
-    metadata: {},
   };
 
   return {
@@ -144,7 +142,6 @@ export function addBranchNode(
     parent: parentId,
     children: [],
     tags: [],
-    metadata: {},
   };
 
   return {
@@ -224,7 +221,7 @@ export function getQuestEndNodeId(document: TreeDocument, questId: string): stri
 export function updateNode(
   document: TreeDocument,
   nodeId: string,
-  patch: Partial<Pick<QuestNode, "name" | "description" | "notes" | "metadata">>,
+  patch: Partial<Pick<QuestNode, "name" | "description" | "notes">>,
 ): TreeDocument {
   const node = requireNode(document, nodeId);
   return {
@@ -251,11 +248,27 @@ export function updateQuestColor(document: TreeDocument, questId: string, color:
   };
 }
 
+/** Tag names are compared trimmed and case-insensitively, so "Foo" and " foo " collide. */
+function normalizeTagName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+function isTagNameTaken(document: TreeDocument, name: string, excludeTagId?: string): boolean {
+  const normalized = normalizeTagName(name);
+  return Object.values(document.tags).some(
+    (tag) => tag.id !== excludeTagId && normalizeTagName(tag.name) === normalized,
+  );
+}
+
 export function createTag(
   document: TreeDocument,
   name: string,
   color: string,
 ): { document: TreeDocument; tagId: string } {
+  if (isTagNameTaken(document, name)) {
+    throw new DocumentError(`A tag named "${name}" already exists.`);
+  }
+
   const tagId = generateId();
   const tag: TagDefinition = { id: tagId, name, color };
   return {
@@ -272,6 +285,9 @@ export function updateTag(
   const tag = document.tags[tagId];
   if (!tag) {
     throw new DocumentError(`Tag not found: ${tagId}`);
+  }
+  if (patch.name !== undefined && isTagNameTaken(document, patch.name, tagId)) {
+    throw new DocumentError(`A tag named "${patch.name}" already exists.`);
   }
   return {
     ...document,

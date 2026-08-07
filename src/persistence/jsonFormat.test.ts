@@ -19,4 +19,37 @@ describe("jsonFormat", () => {
 
     expect(() => jsonFormat.deserialize(text)).toThrow(/Unsupported schema version/);
   });
+
+  it("rejects a document whose rootId has no matching node", () => {
+    const text = JSON.stringify({ schemaVersion: 1, rootId: "missing", nodes: {}, quests: {}, tags: {} });
+
+    expect(() => jsonFormat.deserialize(text)).toThrow(/rootId "missing" has no matching node/);
+  });
+
+  it("rejects a node with a dangling child reference", () => {
+    const document = createDocument();
+    document.nodes[document.rootId].children.push({ id: "ghost", edgeType: "continue" });
+    const text = jsonFormat.serialize(document);
+
+    expect(() => jsonFormat.deserialize(text)).toThrow(/child reference to unknown node "ghost"/);
+  });
+
+  it("rejects a node reachable from more than one parent", () => {
+    const document = createDocument();
+    const { document: withChild, nodeId } = addContinueNode(document, document.rootId);
+    // Manually forge a second edge into the same child, forming a diamond/cycle.
+    const { document: withBranch, nodeId: branchId } = addBranchNode(withChild, document.rootId);
+    withBranch.nodes[branchId].children.push({ id: nodeId, edgeType: "continue" });
+    const text = jsonFormat.serialize(withBranch);
+
+    expect(() => jsonFormat.deserialize(text)).toThrow(/reachable from more than one parent/);
+  });
+
+  it("rejects a node that references an unknown quest", () => {
+    const document = createDocument();
+    document.nodes[document.rootId].questId = "ghost-quest";
+    const text = jsonFormat.serialize(document);
+
+    expect(() => jsonFormat.deserialize(text)).toThrow(/references unknown quest "ghost-quest"/);
+  });
 });

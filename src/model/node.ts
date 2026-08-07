@@ -18,5 +18,4 @@ export interface QuestNode {
   parent: string | null;
   children: ChildRef[];
   tags: string[];
-  metadata: Record<string, unknown>;
 }

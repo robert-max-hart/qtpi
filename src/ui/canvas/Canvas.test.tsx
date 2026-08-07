@@ -228,6 +228,34 @@ describe("Canvas", () => {
     expect(screen.getByText("Findable Child")).toBeInTheDocument();
   });
 
+  it("remounts the flow viewport when a brand new document (different rootId) is loaded", () => {
+    const document = createDocument();
+    const { container, rerender } = render(
+      <Canvas document={document} selectedNodeId={null} onSelectNode={vi.fn()} />,
+    );
+    const flowBefore = container.querySelector(".react-flow");
+
+    const freshDocument = createDocument();
+    rerender(<Canvas document={freshDocument} selectedNodeId={null} onSelectNode={vi.fn()} />);
+    const flowAfter = container.querySelector(".react-flow");
+
+    expect(flowAfter).not.toBe(flowBefore);
+  });
+
+  it("does not remount the flow viewport for an ordinary edit to the same document", () => {
+    const document = createDocument();
+    const { container, rerender } = render(
+      <Canvas document={document} selectedNodeId={null} onSelectNode={vi.fn()} />,
+    );
+    const flowBefore = container.querySelector(".react-flow");
+
+    const edited = updateNode(document, document.rootId, { name: "Arrive at the mill" });
+    rerender(<Canvas document={edited} selectedNodeId={null} onSelectNode={vi.fn()} />);
+    const flowAfter = container.querySelector(".react-flow");
+
+    expect(flowAfter).toBe(flowBefore);
+  });
+
   it("clears the tag search query after jumping to a result", () => {
     const document = createDocument();
     const { document: withTag, tagId } = createTag(document, "Foreshadowing", "#e07a5f");

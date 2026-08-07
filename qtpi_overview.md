@@ -11,7 +11,7 @@ There should be an inspector panel on the right-hand side that displays informat
 There should be a top-bar with general items, like a new button, load button, and save button. There may be additional buttons needed for other tasks, TBD.
 
 Nodes:
-Nodes will consist of some basic data for now, as well as possability for metadata. Start with a name for each node, and a short description (textfield). Each node will, datawise, need to know its previous (parent) node as well as any children (direct or branching) nodes it has. Each node can be color-cordinated, with a primary color related to the questline the node lives on, and a secondary color that can be configured by the user for categorization purposes - secondary colors and tags for each node would be good things to be able to search and sort by. Nodes will also contain metadata that the user can add, in a dictionary / object format.
+Nodes will consist of some basic data for now. Start with a name for each node, and a short description (textfield). Each node will, datawise, need to know its previous (parent) node as well as any children (direct or branching) nodes it has. Each node can be color-cordinated, with a primary color related to the questline the node lives on, and a secondary color that can be configured by the user for categorization purposes - secondary colors and tags for each node would be good things to be able to search and sort by.
 
 Data:
 Quest and node data should be able to be saved and loaded as a flat file - format TBD, though ideally the application will support multiple data formats.
@@ -39,6 +39,7 @@ Data model:
 - Secondary color / tags: unified into a single tag system - there is no separate `secondaryColor` field on the node. Tags are global, managed objects (`TagDefinition { id, name, color }`), created/edited/deleted through a dedicated tag-management interface. A node just holds a list of tag IDs; every node sharing a tag automatically shares that tag's color. Nodes with multiple tags show each tag's color as its own small badge rather than one collapsed "secondary color".
 - Ending-node marker: no special visual treatment - a leaf node (no outgoing edges) is implicitly the ending of its quest.
 - Node deletion safeguard: deletion is blocked while a node has children - the user must delete or reassign all children first. No cascade-delete or auto-reparent automation.
+- Metadata: the freeform per-node metadata dictionary from the original brief has been cut from scope - removed from the model, persistence, and inspector entirely. Name/description/notes/tags cover the fields actually in use; can be reintroduced later if a concrete need for it comes up.
 
 UI & navigation:
 - Canvas navigation: pan and zoom, a minimap (collapsible/hidable), search-to-node with jump/center, and collapse/expand of subtrees are all in scope for v1.
@@ -52,7 +53,7 @@ Architecture overview:
 - Model layer (plain TypeScript, no React/UI dependency): `QuestNode`, `Quest`, `TagDefinition`, and a `TreeDocument` type plus pure functions that enforce invariants (single root always exists, deletion safeguard, questId propagation on branch/continue). Named `QuestNode`/`TreeDocument` rather than `Node`/`Document` to avoid colliding with the DOM's global `Node`/`Document` types and React Flow's own `Node` type.
 - Persistence layer: a small `FormatAdapter` interface (`serialize(document) -> text`, `deserialize(text) -> document`) with a `jsonFormat` implementation and a registry keyed by file extension, so new formats can be added later without touching the model or UI. File I/O itself (reading/writing on disk) is a thin browser-specific layer on top of this (File System Access API, with download/upload fallback) - not yet built (that's Milestone 6).
 - View layer: a React Flow (`@xyflow/react`) canvas with custom node/edge components, a top-down tree layout function (depth = y; "continue" child stays directly beneath its parent, "branch" children fan out sideways with reserved x-width per subtree to avoid overlap), pan/zoom and minimap (both built into React Flow, minimap made collapsible), and search-to-node.
-- Inspector: a React panel bound to the current selection, editing name/description/tags/metadata instantly against in-memory document state, plus "Add continue node" / "Add branch node" and "Delete node" actions.
+- Inspector: a React panel bound to the current selection, editing name/description/notes/tags instantly against in-memory document state, plus "Add continue node" / "Add branch node" and "Delete node" actions.
 - Tag manager: a dialog/modal for creating/renaming/recoloring/deleting global tags.
 - App shell: top toolbar (New/Load/Save/Save As/Tag Manager), central canvas, right-hand inspector panel - implemented now, Milestone 1.
 - State management: kept as plain React state/context to start, per the "keep things simple" tenet; only introduce a dedicated state library (e.g. Zustand) later if prop-drilling/perf actually becomes a problem.
@@ -113,8 +114,7 @@ Example JSON shape (illustrative, not final schema):
         { "id": "n2", "edgeType": "continue" },
         { "id": "n5", "edgeType": "branch" }
       ],
-      "tags": ["t1"],
-      "metadata": {}
+      "tags": ["t1"]
     }
   }
 }

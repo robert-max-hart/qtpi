@@ -44,6 +44,24 @@ body,
   border-bottom: 1px solid light-dark(#d0d0d0, #3a3a3a);
 }
 
+.app-crash {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 1rem;
+  text-align: center;
+  color: light-dark(#000000, #f8f8f8);
+  background: light-dark(#ffffff, #1e1e1e);
+}
+
+.app-crash p {
+  max-width: 32rem;
+  color: light-dark(#5a5a5a, #a0a0a0);
+}
+
 .app-body {
   flex: 1;
   display: flex;
