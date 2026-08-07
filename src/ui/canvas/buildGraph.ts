@@ -44,6 +44,7 @@ export function buildGraph(
 
       const data: QuestNodeGraphData = {
         label: node.name,
+        description: node.description,
         primaryColor: document.quests[node.questId].primaryColor,
         tagColors,
         hasChildren: node.children.length > 0,

@@ -36,6 +36,7 @@ describe("InspectorPanel", () => {
 
     expect(screen.getByLabelText("Name")).toHaveValue("Root");
     expect(screen.getByLabelText("Description")).toHaveValue("");
+    expect(screen.getByLabelText("Notes")).toHaveValue("");
   });
 
   it("saves name edits instantly, with no save button", () => {
@@ -74,6 +75,24 @@ describe("InspectorPanel", () => {
 
     const updated = onChangeDocument.mock.calls[0][0];
     expect(updated.nodes[document.rootId].description).toBe("A quiet start.");
+  });
+
+  it("saves notes edits instantly", () => {
+    const document = createDocument();
+    const onChangeDocument = vi.fn();
+    render(
+      <InspectorPanel
+        document={document}
+        selectedNodeId={document.rootId}
+        onChangeDocument={onChangeDocument}
+        onSelectNode={vi.fn()}
+      />,
+    );
+
+    fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "Only the author should see this." } });
+
+    const updated = onChangeDocument.mock.calls[0][0];
+    expect(updated.nodes[document.rootId].notes).toBe("Only the author should see this.");
   });
 
   it("adds a continue node and selects it", () => {

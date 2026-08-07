@@ -70,6 +70,15 @@ describe("Canvas", () => {
     expect(document.quests[questId].primaryColor).toBe("#4a90d9");
   });
 
+  it("does not render a node's notes on the canvas card", () => {
+    const document = createDocument();
+    const noted = updateNode(document, document.rootId, { notes: "Only the author should see this." });
+
+    render(<Canvas document={noted} selectedNodeId={null} onSelectNode={vi.fn()} />);
+
+    expect(screen.queryByText("Only the author should see this.")).not.toBeInTheDocument();
+  });
+
   it("renders one tag dot per tag assigned to a node", () => {
     const document = createDocument();
     const { document: withTag, tagId } = createTag(document, "Foreshadowing", "#e07a5f");
@@ -187,6 +196,47 @@ describe("Canvas", () => {
     const searchInput = screen.getByLabelText("Search nodes") as HTMLInputElement;
     fireEvent.change(searchInput, { target: { value: "findable" } });
     fireEvent.click(screen.getByRole("button", { name: "Findable Child" }));
+
+    expect(searchInput.value).toBe("");
+  });
+
+  it("tag search lists tag matches by name", () => {
+    const document = createDocument();
+    const { document: withTag, tagId } = createTag(document, "Foreshadowing", "#e07a5f");
+    const tagged = toggleNodeTag(withTag, document.rootId, tagId);
+    render(<CanvasHarness document={tagged} />);
+
+    fireEvent.change(screen.getByLabelText("Search tags"), { target: { value: "fore" } });
+
+    expect(screen.getByRole("button", { name: "Foreshadowing" })).toBeInTheDocument();
+  });
+
+  it("tag search reveals a tagged node hidden under a collapsed ancestor", () => {
+    const document = createDocument();
+    const { document: withChild, nodeId } = addContinueNode(document, document.rootId);
+    const named = updateNode(withChild, nodeId, { name: "Findable Child" });
+    const { document: withTag, tagId } = createTag(named, "Foreshadowing", "#e07a5f");
+    const tagged = toggleNodeTag(withTag, nodeId, tagId);
+    const { container } = render(<CanvasHarness document={tagged} />);
+
+    fireEvent.click(collapseToggle(container));
+    expect(screen.queryByText("Findable Child")).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Search tags"), { target: { value: "fore" } });
+    fireEvent.click(screen.getByRole("button", { name: "Foreshadowing" }));
+
+    expect(screen.getByText("Findable Child")).toBeInTheDocument();
+  });
+
+  it("clears the tag search query after jumping to a result", () => {
+    const document = createDocument();
+    const { document: withTag, tagId } = createTag(document, "Foreshadowing", "#e07a5f");
+    const tagged = toggleNodeTag(withTag, document.rootId, tagId);
+    render(<CanvasHarness document={tagged} />);
+
+    const searchInput = screen.getByLabelText("Search tags") as HTMLInputElement;
+    fireEvent.change(searchInput, { target: { value: "fore" } });
+    fireEvent.click(screen.getByRole("button", { name: "Foreshadowing" }));
 
     expect(searchInput.value).toBe("");
   });

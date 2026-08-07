@@ -102,6 +102,15 @@ export function InspectorPanel({
       </label>
 
       <label className="field">
+        Notes
+        <textarea
+          rows={5}
+          value={node.notes}
+          onChange={(event) => onChangeDocument(updateNode(document, nodeId, { notes: event.target.value }))}
+        />
+      </label>
+
+      <label className="field">
         Quest color
         <input
           type="color"

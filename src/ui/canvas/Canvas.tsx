@@ -9,6 +9,15 @@ import { SearchPanel } from "./SearchPanel";
 
 const nodeTypes = { questNode: QuestNodeView };
 
+/**
+ * `<MiniMap>` renders itself as its own bottom-right `Panel` (200x150 default
+ * size, 15px margin - both react-flow internals, not derived from anything
+ * here) - to sit the toggle button below it rather than overlapping it, this
+ * pushes our own bottom-right Panel down by the minimap's margin + height
+ * plus a small gap.
+ */
+const MINIMAP_TOGGLE_OFFSET_PX = 15 + 150 + 8;
+
 interface CanvasProps {
   document: TreeDocument;
   selectedNodeId: string | null;
@@ -41,6 +50,24 @@ export function Canvas({ document, selectedNodeId, onSelectNode }: CanvasProps) 
       return next;
     });
   }, [selectedNodeId, document]);
+
+  // Same idea, but for a tag search jump: several nodes at once, none of
+  // which get selected (there's no single "right" one to select).
+  const expandAncestorsOf = useCallback(
+    (nodeIds: string[]) => {
+      setCollapsedIds((prev) => {
+        const toExpand = new Set<string>();
+        nodeIds.forEach((id) => {
+          collapsedAncestorsOf(document, id, prev).forEach((ancestorId) => toExpand.add(ancestorId));
+        });
+        if (toExpand.size === 0) return prev;
+        const next = new Set(prev);
+        toExpand.forEach((id) => next.delete(id));
+        return next;
+      });
+    },
+    [document],
+  );
 
   const toggleCollapse = useCallback((nodeId: string) => {
     setCollapsedIds((prev) => {
@@ -88,9 +115,17 @@ export function Canvas({ document, selectedNodeId, onSelectNode }: CanvasProps) 
           />
         )}
         <Panel position="top-left">
-          <SearchPanel document={document} nodes={nodes} onSelectNode={onSelectNode} />
+          <SearchPanel
+            document={document}
+            nodes={nodes}
+            onSelectNode={onSelectNode}
+            onExpandAncestors={expandAncestorsOf}
+          />
         </Panel>
-        <Panel position="top-right">
+        <Panel
+          position="bottom-right"
+          style={isMinimapVisible ? { marginBottom: MINIMAP_TOGGLE_OFFSET_PX } : undefined}
+        >
           <button
             type="button"
             className="canvas-minimap-toggle"

@@ -13,6 +13,7 @@ export interface QuestNode {
   id: string;
   name: string;
   description: string;
+  notes: string;
   questId: string;
   parent: string | null;
   children: ChildRef[];

@@ -63,6 +63,7 @@ export function createDocument(): TreeDocument {
     id: rootId,
     name: "Root",
     description: "",
+    notes: "",
     questId,
     parent: null,
     children: [],
@@ -95,6 +96,7 @@ export function addContinueNode(
     id: nodeId,
     name: "New Node",
     description: "",
+    notes: "",
     questId: parent.questId,
     parent: parentId,
     children: [],
@@ -137,6 +139,7 @@ export function addBranchNode(
     id: nodeId,
     name: "New Quest",
     description: "",
+    notes: "",
     questId,
     parent: parentId,
     children: [],
@@ -221,7 +224,7 @@ export function getQuestEndNodeId(document: TreeDocument, questId: string): stri
 export function updateNode(
   document: TreeDocument,
   nodeId: string,
-  patch: Partial<Pick<QuestNode, "name" | "description" | "metadata">>,
+  patch: Partial<Pick<QuestNode, "name" | "description" | "notes" | "metadata">>,
 ): TreeDocument {
   const node = requireNode(document, nodeId);
   return {

@@ -178,6 +178,15 @@ describe("updateNode", () => {
     expect(result.nodes[document.rootId].name).toBe("Arrive at the mill");
     expect(result.nodes[document.rootId].description).toBe("");
   });
+
+  it("a new node's notes default to empty, and updateNode can patch them", () => {
+    const document = createDocument();
+    expect(document.nodes[document.rootId].notes).toBe("");
+
+    const result = updateNode(document, document.rootId, { notes: "Private author notes." });
+
+    expect(result.nodes[document.rootId].notes).toBe("Private author notes.");
+  });
 });
 
 describe("updateQuestColor", () => {

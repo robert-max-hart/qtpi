@@ -146,6 +146,7 @@ body,
 .quest-node {
   position: relative;
   min-width: 150px;
+  max-width: 220px;
   padding: 8px 10px;
   border: 1px solid light-dark(#1a192b, #3c3c3c);
   border-left-width: 6px;
@@ -171,6 +172,12 @@ body,
   color: inherit;
   font-size: 12px;
   cursor: pointer;
+}
+
+.canvas-search-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
 
 .canvas-search {
@@ -209,7 +216,9 @@ body,
 }
 
 .canvas-search-results button {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   width: 100%;
   text-align: left;
   padding: 0.3rem 0.4rem;
@@ -238,6 +247,19 @@ body,
 
 .quest-node-label {
   font-weight: 600;
+}
+
+.quest-node-description {
+  margin-top: 4px;
+  color: light-dark(#444444, #b8b8b8);
+  font-weight: 400;
+  font-size: 10px;
+  text-align: center;
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .quest-node-tags {

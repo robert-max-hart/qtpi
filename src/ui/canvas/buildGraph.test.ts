@@ -5,6 +5,7 @@ import {
   createDocument,
   createTag,
   toggleNodeTag,
+  updateNode,
   updateQuestColor,
 } from "../../model/document";
 import { buildGraph } from "./buildGraph";
@@ -26,6 +27,16 @@ describe("buildGraph", () => {
     expect(root?.position).toEqual(positions[document.rootId]);
     expect(child?.position).toEqual(positions[nodeId]);
     expect(root?.data.label).toBe("Root");
+  });
+
+  it("carries each node's description", () => {
+    const document = createDocument();
+    const described = updateNode(document, document.rootId, { description: "A short blurb." });
+
+    const { nodes } = buildGraph(described);
+    const root = nodes.find((n) => n.id === document.rootId);
+
+    expect((root?.data as QuestNodeGraphData).description).toBe("A short blurb.");
   });
 
   it("gives every node an initial size hint", () => {
