@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createDocument, type TreeDocument } from "./model/document";
-import { openDocument, saveDocument, saveDocumentAs } from "./persistence/fileIO";
+import { openDocument, saveDocument, saveDocumentAs, type SavedFile } from "./persistence/fileIO";
 import { Toolbar } from "./ui/Toolbar";
 import { Canvas } from "./ui/canvas/Canvas";
 import { TagManagerDialog } from "./ui/dialogs/TagManagerDialog";
@@ -77,9 +77,9 @@ function App() {
     }
   }
 
-  async function handleSave() {
+  async function performSave(save: () => Promise<SavedFile | null>): Promise<SavedFile | null> {
     try {
-      const result = await saveDocument(treeDocument, fileHandle, fileName);
+      const result = await save();
       if (!result) return null; // user cancelled the picker
       setFileHandle(result.handle);
       setFileName(result.fileName);
@@ -92,19 +92,12 @@ function App() {
     }
   }
 
-  async function handleSaveAs() {
-    try {
-      const result = await saveDocumentAs(treeDocument, fileName);
-      if (!result) return null;
-      setFileHandle(result.handle);
-      setFileName(result.fileName);
-      setIsDirty(false);
-      setError(null);
-      return result;
-    } catch {
-      setError("Could not save the file.");
-      return null;
-    }
+  function handleSave() {
+    return performSave(() => saveDocument(treeDocument, fileHandle, fileName));
+  }
+
+  function handleSaveAs() {
+    return performSave(() => saveDocumentAs(treeDocument, fileName));
   }
 
   function proceedPendingAction(action: PendingAction) {

@@ -1,4 +1,4 @@
-import type { TreeDocument } from "../model/document";
+import { normalizeTagName, type TreeDocument } from "../model/document";
 import type { QuestNode } from "../model/node";
 import type { Quest } from "../model/quest";
 import type { TagDefinition } from "../model/tag";
@@ -57,7 +57,7 @@ function validateShape(payload: SerializedDocumentV1): void {
 
   const seenTagNames = new Set<string>();
   for (const tag of Object.values(payload.tags)) {
-    const normalized = tag.name.trim().toLowerCase();
+    const normalized = normalizeTagName(tag.name);
     if (seenTagNames.has(normalized)) {
       throw new Error(`Corrupt document: more than one tag is named "${tag.name}".`);
     }

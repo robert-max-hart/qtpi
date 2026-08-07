@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { createTag, deleteTag, DocumentError, updateTag, type TreeDocument } from "../../model/document";
+import {
+  createTag,
+  deleteTag,
+  describeError,
+  normalizeTagName,
+  updateTag,
+  type TreeDocument,
+} from "../../model/document";
 
 const DEFAULT_TAG_COLOR = "#888888";
 const DEFAULT_TAG_NAME = "New Tag";
@@ -12,11 +19,11 @@ interface TagManagerDialogProps {
 
 /** "New Tag", then "New Tag 2", "New Tag 3", ... so repeated clicks on "Add tag" never collide. */
 function nextDefaultTagName(document: TreeDocument): string {
-  const taken = new Set(Object.values(document.tags).map((tag) => tag.name.trim().toLowerCase()));
-  if (!taken.has(DEFAULT_TAG_NAME.toLowerCase())) return DEFAULT_TAG_NAME;
+  const taken = new Set(Object.values(document.tags).map((tag) => normalizeTagName(tag.name)));
+  if (!taken.has(normalizeTagName(DEFAULT_TAG_NAME))) return DEFAULT_TAG_NAME;
 
   let n = 2;
-  while (taken.has(`${DEFAULT_TAG_NAME} ${n}`.toLowerCase())) n++;
+  while (taken.has(normalizeTagName(`${DEFAULT_TAG_NAME} ${n}`))) n++;
   return `${DEFAULT_TAG_NAME} ${n}`;
 }
 
@@ -30,7 +37,7 @@ export function TagManagerDialog({ document, onChangeDocument, onClose }: TagMan
       onChangeDocument(next);
       setError(null);
     } catch (err) {
-      setError(err instanceof DocumentError ? err.message : "Something went wrong.");
+      setError(describeError(err));
     }
   }
 
@@ -39,7 +46,7 @@ export function TagManagerDialog({ document, onChangeDocument, onClose }: TagMan
       onChangeDocument(updateTag(document, tagId, { name }));
       setError(null);
     } catch (err) {
-      setError(err instanceof DocumentError ? err.message : "Something went wrong.");
+      setError(describeError(err));
     }
   }
 

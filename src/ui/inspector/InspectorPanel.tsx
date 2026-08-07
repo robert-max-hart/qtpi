@@ -3,7 +3,7 @@ import {
   addBranchNode,
   addContinueNode,
   deleteNode,
-  DocumentError,
+  describeError,
   toggleNodeTag,
   updateNode,
   updateQuestColor,
@@ -53,7 +53,7 @@ export function InspectorPanel({
       onSelectNode(result.nodeId);
       setError(null);
     } catch (err) {
-      setError(err instanceof DocumentError ? err.message : "Something went wrong.");
+      setError(describeError(err));
     }
   }
 
@@ -64,7 +64,7 @@ export function InspectorPanel({
       onSelectNode(result.nodeId);
       setError(null);
     } catch (err) {
-      setError(err instanceof DocumentError ? err.message : "Something went wrong.");
+      setError(describeError(err));
     }
   }
 
@@ -75,7 +75,7 @@ export function InspectorPanel({
       onSelectNode(null);
       setError(null);
     } catch (err) {
-      setError(err instanceof DocumentError ? err.message : "Something went wrong.");
+      setError(describeError(err));
     }
   }
 

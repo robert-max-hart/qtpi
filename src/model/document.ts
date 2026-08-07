@@ -15,6 +15,11 @@ export interface TreeDocument {
 
 export class DocumentError extends Error {}
 
+/** The message to show the user for a failed mutation - the DocumentError's own message if it is one, a generic fallback otherwise. */
+export function describeError(err: unknown): string {
+  return err instanceof DocumentError ? err.message : "Something went wrong.";
+}
+
 const QUEST_COLOR_PALETTE = [
   "#4a90d9",
   "#e07a5f",
@@ -234,7 +239,7 @@ export function updateQuestColor(document: TreeDocument, questId: string, color:
 }
 
 /** Tag names are compared trimmed and case-insensitively, so "Foo" and " foo " collide. */
-function normalizeTagName(name: string): string {
+export function normalizeTagName(name: string): string {
   return name.trim().toLowerCase();
 }
 

@@ -10,6 +10,7 @@ interface SearchPanelProps {
 }
 
 const MAX_RESULTS = 8;
+const FIT_VIEW_OPTIONS = { duration: 600, maxZoom: 1.5 };
 
 /**
  * A name search (jumps to and selects one node) and a tag search (frames
@@ -30,14 +31,14 @@ export function SearchPanel({ document, nodes, onSelectNode, onExpandAncestors }
   useEffect(() => {
     if (!pendingFocusId) return;
     if (!nodes.some((node) => node.id === pendingFocusId)) return;
-    void fitView({ nodes: [{ id: pendingFocusId }], duration: 600, maxZoom: 1.5 });
+    void fitView({ nodes: [{ id: pendingFocusId }], ...FIT_VIEW_OPTIONS });
     setPendingFocusId(null);
   }, [pendingFocusId, nodes, fitView]);
 
   useEffect(() => {
     if (!pendingFrameIds) return;
     if (!pendingFrameIds.every((id) => nodes.some((node) => node.id === id))) return;
-    void fitView({ nodes: pendingFrameIds.map((id) => ({ id })), duration: 600, maxZoom: 1.5 });
+    void fitView({ nodes: pendingFrameIds.map((id) => ({ id })), ...FIT_VIEW_OPTIONS });
     setPendingFrameIds(null);
   }, [pendingFrameIds, nodes, fitView]);
 

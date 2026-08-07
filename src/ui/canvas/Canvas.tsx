@@ -37,22 +37,11 @@ export function Canvas({ document, selectedNodeId, onSelectNode }: CanvasProps) 
     });
   }, [document]);
 
-  // Whatever gets selected - a click, a search jump, "Add continue/branch
-  // node" from the inspector - should always be visible, even if it's under
-  // a collapsed ancestor.
-  useEffect(() => {
-    if (!selectedNodeId) return;
-    setCollapsedIds((prev) => {
-      const toExpand = collapsedAncestorsOf(document, selectedNodeId, prev);
-      if (toExpand.length === 0) return prev;
-      const next = new Set(prev);
-      toExpand.forEach((id) => next.delete(id));
-      return next;
-    });
-  }, [selectedNodeId, document]);
-
-  // Same idea, but for a tag search jump: several nodes at once, none of
-  // which get selected (there's no single "right" one to select).
+  // Expands whatever collapsed ancestors are hiding the given nodes - used
+  // both for a single selection (a click, "Add continue/branch node" from
+  // the inspector, a name search jump) and a tag search jump's several
+  // nodes at once, none of which get selected (there's no single "right"
+  // one to select).
   const expandAncestorsOf = useCallback(
     (nodeIds: string[]) => {
       setCollapsedIds((prev) => {
@@ -68,6 +57,13 @@ export function Canvas({ document, selectedNodeId, onSelectNode }: CanvasProps) 
     },
     [document],
   );
+
+  // Whatever gets selected should always be visible, even if it's under a
+  // collapsed ancestor.
+  useEffect(() => {
+    if (!selectedNodeId) return;
+    expandAncestorsOf([selectedNodeId]);
+  }, [selectedNodeId, expandAncestorsOf]);
 
   const toggleCollapse = useCallback((nodeId: string) => {
     setCollapsedIds((prev) => {

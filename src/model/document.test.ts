@@ -6,12 +6,24 @@ import {
   createTag,
   deleteNode,
   deleteTag,
+  describeError,
   DocumentError,
   toggleNodeTag,
   updateNode,
   updateQuestColor,
   updateTag,
 } from "./document";
+
+describe("describeError", () => {
+  it("returns a DocumentError's own message", () => {
+    expect(describeError(new DocumentError("Node not found: x"))).toBe("Node not found: x");
+  });
+
+  it("falls back to a generic message for anything else", () => {
+    expect(describeError(new Error("boom"))).toBe("Something went wrong.");
+    expect(describeError("not even an error")).toBe("Something went wrong.");
+  });
+});
 
 describe("createDocument", () => {
   it("always has exactly one root node with no parent", () => {
