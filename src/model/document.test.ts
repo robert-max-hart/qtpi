@@ -7,7 +7,6 @@ import {
   deleteNode,
   deleteTag,
   DocumentError,
-  getQuestEndNodeId,
   toggleNodeTag,
   updateNode,
   updateQuestColor,
@@ -141,32 +140,6 @@ describe("deleteNode", () => {
     const result = deleteNode(withContinue, leafId);
 
     expect(result.quests[questId]).toBeDefined();
-  });
-});
-
-describe("getQuestEndNodeId", () => {
-  it("returns the start node itself when the quest has no continuations", () => {
-    const document = createDocument();
-    const questId = document.nodes[document.rootId].questId;
-
-    expect(getQuestEndNodeId(document, questId)).toBe(document.rootId);
-  });
-
-  it("walks the continue chain to the last linear node", () => {
-    const document = createDocument();
-    const questId = document.nodes[document.rootId].questId;
-    const step1 = addContinueNode(document, document.rootId);
-    const step2 = addContinueNode(step1.document, step1.nodeId);
-
-    expect(getQuestEndNodeId(step2.document, questId)).toBe(step2.nodeId);
-  });
-
-  it("does not follow branch edges when computing the end of a quest", () => {
-    const document = createDocument();
-    const questId = document.nodes[document.rootId].questId;
-    const { document: withBranch } = addBranchNode(document, document.rootId);
-
-    expect(getQuestEndNodeId(withBranch, questId)).toBe(document.rootId);
   });
 });
 

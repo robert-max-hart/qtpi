@@ -34,6 +34,7 @@ function App() {
   function handleChangeDocument(next: TreeDocument) {
     setTreeDocument(next);
     setIsDirty(true);
+    setError(null);
   }
 
   function resetToNewDocument() {

@@ -14,11 +14,6 @@ function supportsSavePicker(): boolean {
   return typeof window !== "undefined" && typeof window.showSaveFilePicker === "function";
 }
 
-/** Chosen at call time (not cached) so tests can stub the picker functions per-case. */
-export function supportsFileSystemAccess(): boolean {
-  return supportsOpenPicker() && supportsSavePicker();
-}
-
 /** `Blob.text()` isn't implemented by jsdom; `FileReader` works everywhere. */
 function readFileText(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -124,19 +119,29 @@ function openDocumentFallback(): Promise<OpenedFile | null> {
       input.remove();
     }
 
-    // No native "cancel" event for <input type=file>; picking up window focus
-    // returning (after a beat, so a real `change` event can win the race) is
+    function settleCancelled() {
+      if (settled) return;
+      settled = true;
+      cleanup();
+      resolve(null);
+    }
+
+    // Chromium/Firefox fire a real "cancel" event when the dialog is
+    // dismissed with no selection - a reliable signal, unlike the
+    // focus-timing heuristic below. Harmless to always listen for: on
+    // browsers that don't support it, it simply never fires.
+    input.addEventListener("cancel", settleCancelled);
+
+    // Fallback for browsers without the "cancel" event above (older Safari):
+    // picking up window focus returning (after a beat, so a real `change`
+    // event can still win the race if it's merely running a bit behind) is
     // the standard heuristic for detecting a dismissed dialog.
     function onFocus() {
-      setTimeout(() => {
-        if (settled) return;
-        settled = true;
-        cleanup();
-        resolve(null);
-      }, 300);
+      setTimeout(settleCancelled, 300);
     }
 
     input.addEventListener("change", () => {
+      if (settled) return;
       settled = true;
       window.removeEventListener("focus", onFocus);
       const file = input.files?.[0];

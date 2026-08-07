@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createDocument } from "../model/document";
 import { getFormat } from "./index";
-import { openDocument, saveDocument, saveDocumentAs, supportsFileSystemAccess } from "./fileIO";
+import { openDocument, saveDocument, saveDocumentAs } from "./fileIO";
 
 function makeFakeWritable() {
   const chunks: string[] = [];
@@ -26,28 +26,6 @@ function makeFakeFileHandle(
     isSameEntry: vi.fn(async () => false),
   };
 }
-
-describe("supportsFileSystemAccess", () => {
-  afterEach(() => {
-    Reflect.deleteProperty(window, "showOpenFilePicker");
-    Reflect.deleteProperty(window, "showSaveFilePicker");
-  });
-
-  it("is false when the picker API is absent", () => {
-    expect(supportsFileSystemAccess()).toBe(false);
-  });
-
-  it("is false when only one of the two pickers is present", () => {
-    window.showOpenFilePicker = vi.fn();
-    expect(supportsFileSystemAccess()).toBe(false);
-  });
-
-  it("is true when both pickers are present", () => {
-    window.showOpenFilePicker = vi.fn();
-    window.showSaveFilePicker = vi.fn();
-    expect(supportsFileSystemAccess()).toBe(true);
-  });
-});
 
 describe("openDocument via File System Access API", () => {
   afterEach(() => {
@@ -113,6 +91,40 @@ describe("openDocument fallback (no File System Access API)", () => {
       await vi.advanceTimersByTimeAsync(400);
       const result = await promise;
       expect(result).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("resolves null immediately on a native 'cancel' event, without waiting on the focus heuristic", async () => {
+    const promise = openDocument();
+    const input = window.document.querySelector('input[type="file"]');
+    expect(input).not.toBeNull();
+
+    input!.dispatchEvent(new Event("cancel"));
+
+    expect(await promise).toBeNull();
+  });
+
+  it("a 'change' that wins the race is not later overridden by a slow-to-fire focus timeout", async () => {
+    vi.useFakeTimers();
+    try {
+      const document = createDocument();
+      const text = getFormat("json").serialize(document);
+      const file = new File([text], "fallback.json");
+
+      const promise = openDocument();
+      const input = window.document.querySelector('input[type="file"]');
+      Object.defineProperty(input!, "files", { value: [file], configurable: true });
+      input!.dispatchEvent(new Event("change"));
+
+      // The focus event (and its 300ms cancel-heuristic timer) can still
+      // arrive after "change" already settled things - it must be a no-op.
+      window.dispatchEvent(new Event("focus"));
+      await vi.advanceTimersByTimeAsync(400);
+
+      const result = await promise;
+      expect(result?.fileName).toBe("fallback.json");
     } finally {
       vi.useRealTimers();
     }

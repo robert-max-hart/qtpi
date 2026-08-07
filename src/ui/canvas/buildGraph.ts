@@ -22,15 +22,33 @@ export interface FlowGraph {
 const QUEST_NODE_INITIAL_WIDTH = 150;
 const QUEST_NODE_INITIAL_HEIGHT = 40;
 
+/** Constant object, shared by every branch edge, rather than a fresh literal per edge per call. */
+const BRANCH_EDGE_STYLE = { strokeDasharray: "6 4" };
+
+function sameTagColors(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((color, index) => color === b[index]);
+}
+
 /**
  * Converts the domain tree into the plain node/edge arrays React Flow renders.
  * A node in `collapsedIds` is still rendered, but its descendants are not -
  * `layoutTree` skips positioning them, and this filters nodes/edges down to
  * only what got a position.
+ *
+ * `previousNodesById`, if given, lets a node that hasn't actually changed
+ * (same content, position, and selection) keep its exact previous object.
+ * Without this, editing one node's name would give *every* node a new
+ * object identity on every keystroke (the whole `document` is replaced on
+ * every edit) - which both defeats `QuestNodeView`'s `memo` and forces React
+ * Flow to re-measure every node's DOM size. Same object-identity issue
+ * behind the earlier minimap-visibility bug, just for the whole tree
+ * instead of just the minimap.
  */
 export function buildGraph(
   document: TreeDocument,
   collapsedIds: ReadonlySet<string> = new Set(),
+  selectedNodeId: string | null = null,
+  previousNodesById?: ReadonlyMap<string, FlowNode>,
 ): FlowGraph {
   const positions = layoutTree(document, collapsedIds);
   const isVisible = (nodeId: string) => Boolean(positions[nodeId]);
@@ -41,20 +59,43 @@ export function buildGraph(
       const tagColors = node.tags
         .map((tagId) => document.tags[tagId]?.color)
         .filter((color): color is string => Boolean(color));
+      const primaryColor = document.quests[node.questId].primaryColor;
+      const hasChildren = node.children.length > 0;
+      const isCollapsed = collapsedIds.has(node.id);
+      const selected = node.id === selectedNodeId;
+      const position = positions[node.id];
+
+      const previous = previousNodesById?.get(node.id);
+      const previousData = previous?.data as QuestNodeGraphData | undefined;
+      const unchanged =
+        previous !== undefined &&
+        previous.selected === selected &&
+        previous.position.x === position.x &&
+        previous.position.y === position.y &&
+        previousData !== undefined &&
+        previousData.label === node.name &&
+        previousData.description === node.description &&
+        previousData.primaryColor === primaryColor &&
+        previousData.hasChildren === hasChildren &&
+        previousData.isCollapsed === isCollapsed &&
+        sameTagColors(previousData.tagColors, tagColors);
+
+      if (unchanged) return previous;
 
       const data: QuestNodeGraphData = {
         label: node.name,
         description: node.description,
-        primaryColor: document.quests[node.questId].primaryColor,
+        primaryColor,
         tagColors,
-        hasChildren: node.children.length > 0,
-        isCollapsed: collapsedIds.has(node.id),
+        hasChildren,
+        isCollapsed,
       };
 
       return {
         id: node.id,
         type: "questNode",
-        position: positions[node.id],
+        position,
+        selected,
         data,
         initialWidth: QUEST_NODE_INITIAL_WIDTH,
         initialHeight: QUEST_NODE_INITIAL_HEIGHT,
@@ -71,7 +112,7 @@ export function buildGraph(
           source: node.id,
           target: child.id,
           type: "smoothstep",
-          style: child.edgeType === "branch" ? { strokeDasharray: "6 4" } : undefined,
+          style: child.edgeType === "branch" ? BRANCH_EDGE_STYLE : undefined,
         })),
     );
 

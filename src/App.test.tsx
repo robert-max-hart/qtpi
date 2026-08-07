@@ -124,4 +124,15 @@ describe("App - unsaved changes guard", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not save the file");
   });
+
+  it("clears a stale load/save error banner as soon as the document is edited", async () => {
+    vi.mocked(fileIO.saveDocument).mockRejectedValue(new Error("disk full"));
+    const { container } = render(<App />);
+    fireEvent.click(screen.getByText("Save"));
+    await screen.findByRole("alert");
+
+    makeDirty(container);
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
 });

@@ -144,4 +144,80 @@ describe("buildGraph", () => {
       [document.rootId, continued.nodeId, branched.nodeId].sort(),
     );
   });
+
+  it("marks a node selected when its id matches selectedNodeId", () => {
+    const document = createDocument();
+
+    const { nodes } = buildGraph(document, new Set(), document.rootId);
+
+    expect(nodes.find((n) => n.id === document.rootId)?.selected).toBe(true);
+  });
+
+  describe("previousNodesById reuse", () => {
+    function byId(nodes: ReturnType<typeof buildGraph>["nodes"]) {
+      return new Map(nodes.map((n) => [n.id, n]));
+    }
+
+    it("reuses a node's exact previous object when nothing about it changed", () => {
+      const document = createDocument();
+      const first = buildGraph(document, new Set(), null);
+
+      const second = buildGraph(document, new Set(), null, byId(first.nodes));
+
+      expect(second.nodes[0]).toBe(first.nodes[0]);
+    });
+
+    it("creates a new object when the node's own content changed", () => {
+      const document = createDocument();
+      const first = buildGraph(document, new Set(), null);
+      const renamed = updateNode(document, document.rootId, { name: "Arrive at the mill" });
+
+      const second = buildGraph(renamed, new Set(), null, byId(first.nodes));
+
+      expect(second.nodes[0]).not.toBe(first.nodes[0]);
+      expect((second.nodes[0].data as QuestNodeGraphData).label).toBe("Arrive at the mill");
+    });
+
+    it("creates a new object when only a sibling changed, but reuses the untouched node", () => {
+      const document = createDocument();
+      const { document: withChild, nodeId } = addContinueNode(document, document.rootId);
+      const first = buildGraph(withChild, new Set(), null);
+      const editedChild = updateNode(withChild, nodeId, { name: "Edited" });
+
+      const second = buildGraph(editedChild, new Set(), null, byId(first.nodes));
+
+      const rootBefore = first.nodes.find((n) => n.id === document.rootId);
+      const rootAfter = second.nodes.find((n) => n.id === document.rootId);
+      const childAfter = second.nodes.find((n) => n.id === nodeId);
+      expect(rootAfter).toBe(rootBefore);
+      expect((childAfter?.data as QuestNodeGraphData).label).toBe("Edited");
+    });
+
+    it("creates a new object when the node's selection state changed", () => {
+      const document = createDocument();
+      const first = buildGraph(document, new Set(), null);
+
+      const second = buildGraph(document, new Set(), document.rootId, byId(first.nodes));
+
+      expect(second.nodes[0]).not.toBe(first.nodes[0]);
+      expect(second.nodes[0].selected).toBe(true);
+    });
+
+    it("creates a new object when the node's position changed", () => {
+      const document = createDocument();
+      const { document: withBranch, nodeId: branchId } = addBranchNode(document, document.rootId);
+      const first = buildGraph(withBranch, new Set(), null);
+      // A "continue" child always lays out before "branch" children (see
+      // layout.ts's orderedChildren), so adding one to root pushes the
+      // existing branch's x position over.
+      const { document: withContinueToo } = addContinueNode(withBranch, document.rootId);
+
+      const second = buildGraph(withContinueToo, new Set(), null, byId(first.nodes));
+
+      const before = first.nodes.find((n) => n.id === branchId);
+      const after = second.nodes.find((n) => n.id === branchId);
+      expect(after?.position).not.toEqual(before?.position);
+      expect(after).not.toBe(before);
+    });
+  });
 });

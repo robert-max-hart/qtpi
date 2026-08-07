@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ReactFlow, Background, Controls, MiniMap, Panel, type Node as FlowNode } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import type { TreeDocument } from "../../model/document";
 import { buildGraph } from "./buildGraph";
 import { collapsedAncestorsOf } from "./collapse";
-import { QuestNodeView, type QuestNodeData, type QuestNodeGraphData } from "./QuestNodeView";
+import { QuestNodeView, ToggleCollapseProvider, type QuestNodeGraphData } from "./QuestNodeView";
 import { SearchPanel } from "./SearchPanel";
 
 const nodeTypes = { questNode: QuestNodeView };
@@ -78,69 +78,69 @@ export function Canvas({ document, selectedNodeId, onSelectNode }: CanvasProps) 
     });
   }, []);
 
+  // Lets buildGraph reuse a node's exact previous object when nothing about
+  // it changed, instead of every node getting a new identity on every edit.
+  const previousNodesRef = useRef<Map<string, FlowNode>>(new Map());
+
   const { nodes, edges } = useMemo(() => {
-    const graph = buildGraph(document, collapsedIds);
-    const nodes: FlowNode[] = graph.nodes.map((node) => {
-      const data: QuestNodeData = {
-        ...(node.data as QuestNodeGraphData),
-        onToggleCollapse: () => toggleCollapse(node.id),
-      };
-      return { ...node, selected: node.id === selectedNodeId, data };
-    });
-    return { nodes, edges: graph.edges };
-  }, [document, selectedNodeId, collapsedIds, toggleCollapse]);
+    const graph = buildGraph(document, collapsedIds, selectedNodeId, previousNodesRef.current);
+    previousNodesRef.current = new Map(graph.nodes.map((node) => [node.id, node]));
+    return graph;
+  }, [document, selectedNodeId, collapsedIds]);
 
   return (
     <div className="canvas">
-      <ReactFlow
-        // `document.rootId` only changes on New/Load (a wholly different
-        // tree) - never on ordinary edits. Keying on it forces a remount
-        // exactly then, which re-triggers `fitView` (it's otherwise an
-        // initial-mount-only behavior) so the viewport recenters on the new
-        // tree instead of keeping whatever pan/zoom was left over.
-        key={document.rootId}
-        nodes={nodes}
-        edges={edges}
-        nodeTypes={nodeTypes}
-        fitView
-        colorMode="system"
-        nodesDraggable={false}
-        nodesConnectable={false}
-        edgesFocusable={false}
-        onNodeClick={(_, node) => onSelectNode(node.id)}
-        onPaneClick={() => onSelectNode(null)}
-      >
-        <Background />
-        <Controls showInteractive={false} />
-        {isMinimapVisible && (
-          <MiniMap
-            pannable
-            zoomable
-            nodeColor={(node) => (node.data as QuestNodeData).primaryColor}
-            nodeStrokeWidth={0}
-          />
-        )}
-        <Panel position="top-left">
-          <SearchPanel
-            document={document}
-            nodes={nodes}
-            onSelectNode={onSelectNode}
-            onExpandAncestors={expandAncestorsOf}
-          />
-        </Panel>
-        <Panel
-          position="bottom-right"
-          style={isMinimapVisible ? { marginBottom: MINIMAP_TOGGLE_OFFSET_PX } : undefined}
+      <ToggleCollapseProvider value={toggleCollapse}>
+        <ReactFlow
+          // `document.rootId` only changes on New/Load (a wholly different
+          // tree) - never on ordinary edits. Keying on it forces a remount
+          // exactly then, which re-triggers `fitView` (it's otherwise an
+          // initial-mount-only behavior) so the viewport recenters on the
+          // new tree instead of keeping whatever pan/zoom was left over.
+          key={document.rootId}
+          nodes={nodes}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          fitView
+          colorMode="system"
+          nodesDraggable={false}
+          nodesConnectable={false}
+          edgesFocusable={false}
+          onNodeClick={(_, node) => onSelectNode(node.id)}
+          onPaneClick={() => onSelectNode(null)}
         >
-          <button
-            type="button"
-            className="canvas-minimap-toggle"
-            onClick={() => setIsMinimapVisible((visible) => !visible)}
+          <Background />
+          <Controls showInteractive={false} />
+          {isMinimapVisible && (
+            <MiniMap
+              pannable
+              zoomable
+              nodeColor={(node) => (node.data as QuestNodeGraphData).primaryColor}
+              nodeStrokeWidth={0}
+            />
+          )}
+          <Panel position="top-left">
+            <SearchPanel
+              document={document}
+              nodes={nodes}
+              onSelectNode={onSelectNode}
+              onExpandAncestors={expandAncestorsOf}
+            />
+          </Panel>
+          <Panel
+            position="bottom-right"
+            style={isMinimapVisible ? { marginBottom: MINIMAP_TOGGLE_OFFSET_PX } : undefined}
           >
-            {isMinimapVisible ? "Hide minimap" : "Show minimap"}
-          </button>
-        </Panel>
-      </ReactFlow>
+            <button
+              type="button"
+              className="canvas-minimap-toggle"
+              onClick={() => setIsMinimapVisible((visible) => !visible)}
+            >
+              {isMinimapVisible ? "Hide minimap" : "Show minimap"}
+            </button>
+          </Panel>
+        </ReactFlow>
+      </ToggleCollapseProvider>
     </div>
   );
 }

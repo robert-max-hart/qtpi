@@ -203,21 +203,6 @@ export function deleteNode(document: TreeDocument, nodeId: string): TreeDocument
   return { ...document, nodes, quests };
 }
 
-/** Walks the "continue" chain from a quest's start to find its current ending node. */
-export function getQuestEndNodeId(document: TreeDocument, questId: string): string {
-  const quest = document.quests[questId];
-  if (!quest) {
-    throw new DocumentError(`Quest not found: ${questId}`);
-  }
-
-  let current = requireNode(document, quest.startNodeId);
-  for (;;) {
-    const next = current.children.find((child) => child.edgeType === "continue");
-    if (!next) return current.id;
-    current = requireNode(document, next.id);
-  }
-}
-
 export function updateNode(
   document: TreeDocument,
   nodeId: string,
